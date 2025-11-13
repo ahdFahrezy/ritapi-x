@@ -33,7 +33,7 @@ CORS_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:8000
 SECURE_SSL_REDIRECT=False   
 
 PYTHONPATH=${workspaceFolder}
-DJANGO_SETTINGS_MODULE=ritapi_plugin.settings
+DJANGO_SETTINGS_MODULE=ritapi_advance.settings
 
 REDIS_URL=redis://127.0.0.1:6379/0
 

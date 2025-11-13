@@ -2,9 +2,9 @@ import os
 from celery import Celery
 
 # Default ke settings Django
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "ritapi_plugin.settings.dev")
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "ritapi_advance.settings.dev")
 
-app = Celery("ritapi_plugin")
+app = Celery("ritapi_advance")
 
 # Baca config Celery dari Django settings, prefix CELERY_
 app.config_from_object("django.conf:settings", namespace="CELERY")

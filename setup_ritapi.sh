@@ -110,7 +110,7 @@ install_dependencies() {
 check_database() {
     print_status "Checking PostgreSQL database..."
     
-    DB_NAME=${POSTGRES_DB:-db_ritapi_plugin}
+    DB_NAME=${POSTGRES_DB:-db_ritapi_advance}
     DB_USER=${POSTGRES_USER:-postgres}
     DB_HOST=${POSTGRES_HOST:-127.0.0.1}
     DB_PORT=${POSTGRES_PORT:-5432}
@@ -194,9 +194,9 @@ check_env_file() {
         print_status "Setting up database configuration..."
         
         # Database interactive configuration
-        printf "Enter PostgreSQL database name [default=db_ritapi_plugin]: "
+        printf "Enter PostgreSQL database name [default=db_ritapi_advance]: "
         read -r db_name
-        db_name=${db_name:-db_ritapi_plugin}
+        db_name=${db_name:-db_ritapi_advance}
 
         printf "Enter PostgreSQL username [default=postgres]: "
         read -r db_user
@@ -250,7 +250,7 @@ EOF
             print_status "Existing .env backed up to .env.backup"
             
             # Get current values for defaults
-            current_db=$(grep POSTGRES_DB .env | cut -d= -f2 || echo "db_ritapi_plugin")
+            current_db=$(grep POSTGRES_DB .env | cut -d= -f2 || echo "db_ritapi_advance)
             current_user=$(grep POSTGRES_USER .env | cut -d= -f2 || echo "postgres")
             current_pass=$(grep POSTGRES_PASSWORD .env | cut -d= -f2 || echo "admin")
             current_host=$(grep POSTGRES_HOST .env | cut -d= -f2 || echo "localhost")

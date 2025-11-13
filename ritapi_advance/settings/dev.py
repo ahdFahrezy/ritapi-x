@@ -9,7 +9,7 @@ ALLOWED_HOSTS = ["127.0.0.1", "localhost", "api.situswaf.com", "default.example.
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.getenv("POSTGRES_DB", "db_ritapi_plugin"),
+        "NAME": os.getenv("POSTGRES_DB", "db_ritapi_advance"),
         "USER": os.getenv("POSTGRES_USER", "postgres"),
         "PASSWORD": os.getenv("POSTGRES_PASSWORD", ""),
         "HOST": os.getenv("POSTGRES_HOST", "127.0.0.1"),

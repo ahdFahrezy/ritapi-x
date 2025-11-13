@@ -55,7 +55,7 @@ services:
   celery:
     build: .
     container_name: ritapi_celery
-    command: celery -A ritapi_plugin worker -l info
+    command: celery -A ritapi_advance worker -l info
     volumes:
       - .:/app
     env_file:
@@ -71,7 +71,7 @@ services:
   celery_beat:
     build: .
     container_name: ritapi_celery_beat
-    command: celery -A ritapi_plugin beat -l info
+    command: celery -A ritapi_advance beat -l info
     volumes:
       - .:/app
     env_file:

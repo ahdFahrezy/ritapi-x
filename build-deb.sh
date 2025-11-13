@@ -1,13 +1,13 @@
 #!/bin/bash
 set -e
 
-APP_NAME="ritapi-plugin"
+APP_NAME="ritapi-advance"
 VERSION="1.0.0"
-DEFAULT_PORT="8010"
+DEFAULT_PORT="8004"
 ARCH="all"
 MAINTAINER="Sydeco <email@example.com>"
-DESCRIPTION="Django Project Ritapi plugin
- Ritapi plugin is a Django application. This package installs the app to /opt/${APP_NAME}."
+DESCRIPTION="Django Project Ritapi Advance
+ Ritapi Advance is a Django application. This package installs the app to /opt/${APP_NAME}."
 
 BUILD_DIR="build"
 PKG_DIR="$BUILD_DIR/${APP_NAME}_${VERSION}"
@@ -17,7 +17,7 @@ SRC_DIR="$(pwd)"
 echo "[*] Cleaning build directory..."
 rm -rf "$BUILD_DIR"
 mkdir -p "$DEBIAN_DIR"
-mkdir -p "$PKG_DIR/opt/new-archangel/services/minifw/plugins/$APP_NAME"
+mkdir -p "$PKG_DIR/opt/$APP_NAME"
 mkdir -p "$PKG_DIR/lib/systemd/system"
 
 # --- Prepare temporary venv for PyArmor ---
@@ -40,7 +40,7 @@ pyarmor gen --recursive \
     --exclude venv \
     -O "$OBFUSCATED_DIR" \
     "$SRC_DIR/manage.py" \
-    "$SRC_DIR/ritapi_plugin" \
+    "$SRC_DIR/ritapi_advance" \
     "$SRC_DIR/ai_behaviour" \
     "$SRC_DIR/alert_blocking" \
     "$SRC_DIR/asn_score" \
@@ -49,13 +49,12 @@ pyarmor gen --recursive \
     "$SRC_DIR/json_enforcer" \
     "$SRC_DIR/tls_analyzer"\
     "$SRC_DIR/middlewares"\
-    "$SRC_DIR/utils"\
     "$SRC_DIR/demo"\
     "$SRC_DIR/ops"
 
 # --- Copy obfuscated project into package ---
 echo "[*] Copying obfuscated project to /opt/$APP_NAME..."
-rsync -a "$OBFUSCATED_DIR/" "$PKG_DIR/opt/new-archangel/services/minifw/plugins/$APP_NAME/"
+rsync -a "$OBFUSCATED_DIR/" "$PKG_DIR/opt/$APP_NAME/"
 
 # Copy other non-source files (requirements, setup scripts, etc.)
 rsync -a \
@@ -66,7 +65,7 @@ rsync -a \
   --exclude '*.log' \
   --exclude 'venv' \
   --exclude '.env' \
-  --exclude 'ritapi_plugin' \
+  --exclude 'ritapi_advance' \
   --exclude 'ai_behaviour' \
   --exclude 'alert_blocking' \
   --exclude 'asn_score' \
@@ -77,13 +76,12 @@ rsync -a \
   --exclude 'ops' \
   --exclude 'demo' \
   --exclude 'middlewares' \
-  --exclude 'utils' \
   --exclude 'manage.py' \
-  ./ "$PKG_DIR/opt/new-archangel/services/minifw/plugins/$APP_NAME/"
+  ./ "$PKG_DIR/opt/$APP_NAME/"
 
 # Ensure setup script is executable
-if [ -f "$PKG_DIR/opt/new-archangel/services/minifw/plugins/$APP_NAME/setup_ritapi.sh" ]; then
-    chmod +x "$PKG_DIR/opt/new-archangel/services/minifw/plugins/$APP_NAME/setup_ritapi.sh"
+if [ -f "$PKG_DIR/opt/$APP_NAME/setup_ritapi.sh" ]; then
+    chmod +x "$PKG_DIR/opt/$APP_NAME/setup_ritapi.sh"
 fi
 
 # --- CONTROL file ---
@@ -103,8 +101,8 @@ cat > "$DEBIAN_DIR/postinst" <<'EOF'
 #!/bin/sh
 set -eu
 
-APP_NAME="ritapi-plugin"
-APP_DIR="/opt/new-archangel/services/minifw/plugins/${APP_NAME}"
+APP_NAME="ritapi-advance"
+APP_DIR="/opt/${APP_NAME}"
 SETUP="${APP_DIR}/setup_ritapi.sh"
 SERVICE_FILE="/lib/systemd/system/${APP_NAME}.service"
 
@@ -183,8 +181,8 @@ cat > "$DEBIAN_DIR/prerm" <<'EOF'
 #!/bin/sh
 set -e
 if [ "$1" = "remove" ] || [ "$1" = "upgrade" ]; then
-    systemctl stop ritapi-plugin || true
-    systemctl disable ritapi-plugin || true
+    systemctl stop ritapi-advance || true
+    systemctl disable ritapi-advance || true
 fi
 exit 0
 EOF
@@ -194,9 +192,11 @@ chmod 755 "$DEBIAN_DIR/prerm"
 cat > "$DEBIAN_DIR/postrm" <<'EOF'
 #!/bin/sh
 set -e
-APP_NAME="ritapi-plugin"
-APP_DIR="/opt/new-archangel/services/minifw/plugins/ritapi-plugin/${APP_NAME}"
+
+APP_NAME="ritapi-advance"
+APP_DIR="/opt/${APP_NAME}"
 STAMP_DIR="/var/lib/${APP_NAME}"
+
 if [ "$1" = "purge" ]; then
     # Remove systemd service
     rm -f /lib/systemd/system/${APP_NAME}.service
@@ -214,38 +214,36 @@ if [ "$1" = "purge" ]; then
     
     # Remove any remaining configuration
     rm -rf /etc/${APP_NAME}
-
-    # Remove any remaining configuration
-    rm -rf /opt/new-archangel/services/minifw/plugins/ritapi-plugin/${APP_NAME}
     
     echo "Complete removal of ${APP_NAME} finished."
 fi
+
 exit 0
 EOF
 chmod 755 "$DEBIAN_DIR/postrm"
 
 # --- SERVICE ---
-cat > "$PKG_DIR/lib/systemd/system/ritapi-plugin.service" <<EOF
+cat > "$PKG_DIR/lib/systemd/system/ritapi-advance.service" <<EOF
 [Unit]
-Description=RitAPI plugin Django Service
+Description=RitAPI Advance Django Service
 After=network.target postgresql.service
 
 [Service]
 Type=simple
 User=www-data
 Group=www-data
-WorkingDirectory=/opt/new-archangel/services/minifw/plugins/ritapi-plugin
-ExecStart=/opt/new-archangel/services/minifw/plugins/ritapi-plugin/venv/bin/gunicorn \\
+WorkingDirectory=/opt/ritapi-advance
+ExecStart=/opt/ritapi-advance/venv/bin/gunicorn \\
   --workers 5 \
   --threads 2 \
   --timeout 60 \
   --keep-alive 30 \
   --server-header \
-  --bind 0.0.0.0:8010 \\
-  ritapi_plugin.wsgi:application
+  --bind 0.0.0.0:8004 \\
+  ritapi_advance.wsgi:application
 Restart=always
-Environment="DJANGO_SETTINGS_MODULE=ritapi_plugin.settings"
-EnvironmentFile=-/opt/new-archangel/services/minifw/plugins/ritapi-plugin/.env
+Environment="DJANGO_SETTINGS_MODULE=ritapi_advance.settings"
+EnvironmentFile=-/opt/ritapi-advance/.env
 
 [Install]
 WantedBy=multi-user.target

@@ -1,5 +1,5 @@
 """
-URL configuration for ritapi_plugin project.
+URL configuration for ritapi_advance project.
 
 The `urlpatterns` list routes URLs to views. For more information please see:
     https://docs.djangoproject.com/en/5.2/topics/http/urls/
@@ -18,7 +18,7 @@ from django.contrib import admin
 from django.urls import path, include
 from django.contrib.auth import views as auth_views
 from django.shortcuts import redirect
-from ritapi_plugin.views import healthz, readyz
+from ritapi_advance.views import healthz, readyz
 from django.http import HttpResponse
 from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
 from django.views.decorators.csrf import csrf_exempt

@@ -108,7 +108,7 @@ MIDDLEWARE = [
     "decision_engine.middleware.DecisionProxyMiddleware",
 ]
 
-ROOT_URLCONF = "ritapi_plugin.urls"
+ROOT_URLCONF = "ritapi_advance.urls"
 TEMPLATES = [{
     "BACKEND": "django.template.backends.django.DjangoTemplates",
     'DIRS': [BASE_DIR / "templates"],
@@ -121,15 +121,15 @@ TEMPLATES = [{
         "ops.ops_license_manager.context_processors.license_status"
     ]},
 }]
-WSGI_APPLICATION = "ritapi_plugin.wsgi.application"
-ASGI_APPLICATION = "ritapi_plugin.asgi.application"
+WSGI_APPLICATION = "ritapi_advance.wsgi.application"
+ASGI_APPLICATION = "ritapi_advance.asgi.application"
 
 # DB dev: sqlite; production: ganti di prod.py ke Postgres
 # === Database (Postgres in Production) ===
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.getenv("POSTGRES_DB", "db_ritapi_plugin"),
+        "NAME": os.getenv("POSTGRES_DB", "db_ritapi_advance"),
         "USER": os.getenv("POSTGRES_USER", "postgres"),
         "PASSWORD": os.getenv("POSTGRES_PASSWORD", ""),
         "HOST": os.getenv("POSTGRES_HOST", "127.0.0.1"),
