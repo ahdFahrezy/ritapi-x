@@ -48,7 +48,7 @@ from utils.routing_hardening import validate_service_routing
 from utils.json_schema import validate_payload_for_service
 from utils.waf_patterns import waf_inspect_request, log_waf_block 
 from utils.geo_block import check_geo_block
-
+from utils.severity import determine_severity
 
 # Import Service model for dynamic backend routing
 try:
@@ -178,11 +178,11 @@ class DecisionProxyMiddleware(MiddlewareMixin):
                     REQUESTS_TOTAL.labels(decision="block").inc()
                     REQUEST_FAIL_TOTAL.labels(status="failed").inc()
                     try:
-                        MODULES["block"].block_ip(
-                            client_ip,
-                            reason=f"GeoBlock country {country}",
-                            severity="critical"
-                        )
+                        reason = f"GeoBlock country {country}"
+                        sev = determine_severity(reason, score=0)
+                        MODULES["block"].block_ip(client_ip, reason=reason, severity=sev)
+                        if MODULES.get("alert"):
+                            MODULES["alert"].create_alert("BLOCKED", client_ip, reason, sev)
                         GEO_BLOCK_TOTAL.labels(result="blocked").inc()
                     except Exception as e:
                         logger.warning(f"GeoBlock auto-block module failed for {client_ip}: {e}")
@@ -511,36 +511,22 @@ class DecisionProxyMiddleware(MiddlewareMixin):
                     log_waf_block(client_ip, path, request.method, body, waf_category, service_id=service_data["id"])
 
                     # Block IP dan kirim alert
+                    reason = f"{waf_category.upper()} detected"
+                    sev = determine_severity(reason, score=70)
                     if MODULES.get("block"):
-                        try:
-                            MODULES["block"].block_ip(
-                                client_ip,
-                                reason=f" {waf_category.upper()} detected",
-                                severity="critical"
-                            )
-                        except Exception as e:
-                            logger.warning(f" block_ip failed: {e}")
-
+                        MODULES["block"].block_ip(client_ip, reason=reason, severity=sev)
                     if MODULES.get("alert"):
-                        try:
-                            MODULES["alert"].create_alert(
-                                "BLOCKED",
-                                client_ip,
-                                f"{waf_category.upper()} detected",
-                                "high"
-                            )
-                        except Exception as e:
-                            logger.warning(f"Alert creation failed for: {e}")
+                        MODULES["alert"].create_alert("BLOCKED", client_ip, reason, sev)
 
                     return waf_response
             except Exception:
                 decision, reason = "block", "malformed_json"
                 log_request(ip=client_ip, path=path, method=request.method, size=len(body), score=0, decision=decision, reason=reason, service_id=service_data["id"])
 
-                if MODULES["block"]:
-                    MODULES["block"].block_ip(client_ip, reason="Malformed JSON", severity="high")
-                if MODULES["alert"]:
-                    MODULES["alert"].create_alert("BLOCKED", client_ip, "Malformed JSON", "high")
+                reason = "Malformed JSON"
+                sev = determine_severity(reason, score=40)
+                MODULES["block"].block_ip(client_ip, reason=reason, severity=sev)
+                MODULES["alert"].create_alert("BLOCKED", client_ip, reason, sev)
                 logger.warning(f"Blocked: {client_ip} sent malformed JSON")
                 REQUESTS_TOTAL.labels(decision="block").inc()
                 REQUEST_FAIL_TOTAL.labels(status="failed").inc()
@@ -559,8 +545,9 @@ class DecisionProxyMiddleware(MiddlewareMixin):
                     REQUESTS_TOTAL.labels(decision="block").inc()
                     REQUEST_FAIL_TOTAL.labels(status="failed").inc()
 
-                    if MODULES["alert"]:
-                        MODULES["alert"].create_alert("JSON SCHEMA BLOCK", client_ip, f"Invalid schema", "medium")
+                    reason = "JSON schema invalid"
+                    sev = determine_severity(reason, score=30)
+                    MODULES["alert"].create_alert("JSON SCHEMA BLOCK", client_ip, reason, sev)
 
                     return JsonResponse({"error": "JSON Schema Invalid", "detail": schema_result["message"]}, status=400)
 
@@ -569,8 +556,9 @@ class DecisionProxyMiddleware(MiddlewareMixin):
                     decision, reason = "monitor", "JSON_SCHEMA_INVALID"
                     log_request(ip=client_ip, path=path, method=request.method, size=len(body), score=0, decision=decision, reason=reason, service_id=service_data["id"])
 
-                    if MODULES["alert"]:
-                        MODULES["alert"].create_alert("JSON SCHEMA MONITOR", client_ip, f"Invalid schema", "low")
+                    reason = "JSON schema invalid"
+                    sev = determine_severity(reason, score=20)
+                    MODULES["alert"].create_alert("JSON SCHEMA MONITOR", client_ip, reason, sev)
 
 
         # === 5) Behaviour logging + anomaly (improved)
@@ -691,16 +679,12 @@ class DecisionProxyMiddleware(MiddlewareMixin):
                 logger.info(f"Blocked: {client_ip} by score {score}")
 
                 # Optional: auto-block IP dan buat alert
-                if MODULES["block"]:
-                    try:
-                        MODULES["block"].block_ip(client_ip, reason="Score too low", severity="high")
-                    except Exception:
-                        pass
-                if MODULES["alert"]:
-                    try:
-                        MODULES["alert"].create_alert("BLOCKED", client_ip, "Auto block by decision engine", "high")
-                    except Exception:
-                        pass
+                reason = "Score too low"
+                sev = determine_severity(reason, score)
+                if MODULES.get("block"):
+                    MODULES["block"].block_ip(client_ip, reason=reason, severity=sev)
+                if MODULES.get("alert"):
+                    MODULES["alert"].create_alert("BLOCKED", client_ip, "Auto block by decision engine", sev)
 
                 return JsonResponse({"error": "Blocked by RITAPI", "score": score}, status=403)
             
@@ -740,18 +724,12 @@ class DecisionProxyMiddleware(MiddlewareMixin):
                                     detected_at__gte=timezone.now() - timezone.timedelta(minutes=5)
                                 ).count()
                                 if recent_anoms >= 3 and MODULES.get("block"):
-                                    MODULES["block"].block_ip(
-                                        client_ip,
-                                        reason=f"Repeated anomalies ({recent_anoms}/5m)",
-                                        severity="high"
-                                    )
+                                    reason = f"Repeated anomalies ({recent_anoms}/5m)"
+                                    sev = determine_severity(reason, score=65)
+                                    if MODULES.get("block"):
+                                        MODULES["block"].block_ip(client_ip, reason=reason, severity=sev)
                                     if MODULES.get("alert"):
-                                        MODULES["alert"].create_alert(
-                                            "AI_AUTOBLOCK",
-                                            client_ip,
-                                            f"Auto-blocked after {recent_anoms} anomalies in 5m",
-                                            "high"
-                                        )
+                                        MODULES["alert"].create_alert("AI_AUTOBLOCK", client_ip, reason, sev)
 
                         except Exception as e:
                             logger.debug(f"AI anomaly detection failed: {e}")
@@ -789,7 +767,10 @@ class DecisionProxyMiddleware(MiddlewareMixin):
             decision, reason = "block", f"backend_error: {e}"
             if MODULES["alert"]:
                 try:
-                    MODULES["alert"].create_alert("BACKEND_ERROR", client_ip, str(e), "critical")
+                    reason = f"Backend error: {e}"
+                    sev = determine_severity(reason, score=80)
+                    if MODULES.get("alert"):
+                        MODULES["alert"].create_alert("BACKEND_ERROR", client_ip, reason, sev)
                 except Exception:
                     pass
             REQUESTS_TOTAL.labels(decision="block").inc()
