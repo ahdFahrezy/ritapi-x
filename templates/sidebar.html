@@ -1,0 +1,200 @@
+<!-- Sidebar -->
+<nav class="sidebar " id="sidebar">
+    <div class="overflow-auto p-3 d-flex flex-column" style="height: 100vh;">
+        <!-- Logo / Title -->
+        <h4 class="text-white text-center mb-4">
+            <i class="fas fa-shield-alt"></i> 
+            <span class="sidebar-logo">Ritapi Advance</span>
+        </h4>
+        
+        <!-- Menu -->
+        <ul class="nav flex-column">
+            <li class="nav-item">
+                <a class="nav-link {% if request.resolver_match.url_name == 'ops_dashboard' %}active{% endif %}" 
+                href="{% url 'ops_dashboard' %}">
+                    <i class="fas fa-tachometer-alt"></i>
+                    <span class="sidebar-text">Dashboard</span>
+                </a>
+            </li>
+
+            <li class="nav-item">
+                <a class="nav-link {% if request.resolver_match.url_name == 'ops_tls' %}active{% endif %}" 
+                href="{% url 'ops_tls' %}">
+                    <i class="fas fa-lock"></i>
+                    <span class="sidebar-text">TLS</span>
+                </a>
+            </li>
+
+            <li class="nav-item">
+                <a class="nav-link d-flex align-items-center 
+                    {% if 'ops_asn' in request.resolver_match.url_name %}active{% endif %}" 
+                    data-bs-toggle="collapse" 
+                    href="#asnMenu" 
+                    role="button" 
+                    aria-expanded="{% if 'ops_asn' in request.resolver_match.url_name %}true{% else %}false{% endif %}" 
+                    aria-controls="asnMenu">
+
+                    <i class="fas fa-project-diagram me-2"></i>
+                    <span class="sidebar-text">ASN</span>
+                    <i class="fas fa-chevron-down ms-auto small"></i>
+                </a>
+
+                <div class="collapse {% if 'ops_asn' in request.resolver_match.url_name %}show{% endif %}" id="asnMenu">
+                    <ul class="nav flex-column ps-4">
+                        <li class="nav-item">
+                            <a href="{% url 'ops_asn_checker' %}" 
+                            class="nav-link {% if request.resolver_match.url_name == 'ops_asn_checker' %}active{% endif %}">
+                                <i class="me-2"></i> ASN Checker
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="{% url 'ops_asn_config' %}" 
+                            class="nav-link {% if request.resolver_match.url_name == 'ops_asn_config' %}active{% endif %}">
+                                <i class="me-2"></i> Trust Config
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </li>
+
+            <li class="nav-item">
+                <a class="nav-link d-flex align-items-center {% if 'ops_ip_reputation' in request.resolver_match.url_name or request.resolver_match.url_name == 'internal_ip_dashboard' %}active{% endif %}" 
+                    data-bs-toggle="collapse" 
+                    href="#ipReputationMenu" 
+                    role="button" 
+                    aria-expanded="{% if 'ops_ip_reputation' in request.resolver_match.url_name or request.resolver_match.url_name == 'internal_ip_dashboard' %}true{% else %}false{% endif %}" 
+                    aria-controls="ipReputationMenu">
+                    
+                    <i class="fas fa-network-wired me-2"></i>
+                    <span class="sidebar-text">IP Reputation</span>
+                    <i class="fas fa-chevron-down ms-auto small"></i>
+
+                </a>
+
+                <div class="collapse {% if 'ops_ip_reputation' in request.resolver_match.url_name or request.resolver_match.url_name == 'internal_ip_dashboard' %}show{% endif %}" id="ipReputationMenu">
+                    <ul class="nav flex-column ps-4">
+                    <li class="nav-item">
+                        <a href="{% url 'ops_ip_reputation_check' %}" class="nav-link {% if request.resolver_match.url_name == 'ops_ip_reputation_check' %}active{% endif %}">
+                        <i class="me-2"></i> Check Reputation
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="{% url 'internal_ip_dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'internal_ip_dashboard' %}active{% endif %}">
+                        <i class="me-2"></i> Internal Allow/Deny
+                        </a>
+                    </li>
+                    </ul>
+                </div>
+            </li>
+
+
+            <li class="nav-item">
+                <a class="nav-link {% if request.resolver_match.url_name == 'ops.jsonschema_dashboard' %}active{% endif %}" 
+                   href="{% url 'ops.jsonschema_dashboard' %}">
+                    <i class="fas fa-database"></i>
+                    <span class="sidebar-text">JSON Schema</span>
+                </a>
+            </li>
+
+            <li class="nav-item">
+                <a class="nav-link {% if request.resolver_match.url_name == 'requestlog_list' %}active{% endif %}" 
+                href="{% url 'requestlog_list' %}">
+                    <i class="fas fa-list"></i>
+                    <span class="sidebar-text">Logs</span>
+                </a>
+            </li>
+
+            {% comment %} <li class="nav-item">
+                <a class="nav-link {% if request.resolver_match.url_name == 'ops_requests' %}active{% endif %}" 
+                   href="">
+                    <i class="fas fa-list"></i>
+                    <span class="sidebar-text">Request Logs</span>
+                </a>
+            </li> {% endcomment %}
+
+            <li class="nav-item">
+                <a class="nav-link {% if request.resolver_match.url_name == 'ops.ops_alert' %}active{% endif %}" 
+                   href="{% url 'ops.ops_alert' %}">
+                    <i class="fas fa-bell"></i>
+                    <span class="sidebar-text">Alerts</span>
+                </a>
+            </li>
+
+            <li class="nav-item">
+                <a class="nav-link d-flex align-items-center {% if 'blocked_ip_map' in request.resolver_match.url_name or 'ops_blocked_ip_dashboard' in request.resolver_match.url_name or 'geo_block_dashboard' in request.resolver_match.url_name %}active{% endif %}" 
+                data-bs-toggle="collapse" 
+                href="#blockedIpMenu" 
+                role="button" 
+                aria-expanded="{% if 'blocked_ip_map' in request.resolver_match.url_name or 'ops_blocked_ip_dashboard' in request.resolver_match.url_name or 'geo_block_dashboard' %}true{% else %}false{% endif %}" 
+                aria-controls="blockedIpMenu">
+                    
+                    <i class="fas fa-ban me-2"></i>
+                    <span class="sidebar-text">Blocking</span>
+                    <i class="fas fa-chevron-down ms-auto small"></i>
+                </a>
+
+                <div class="collapse {% if 'blocked_ip_map' in request.resolver_match.url_name or 'ops_blocked_ip_dashboard' in request.resolver_match.url_name or 'geo_block_dashboard' in request.resolver_match.url_name %}show{% endif %}" id="blockedIpMenu">
+                    <ul class="nav flex-column ps-4">
+                        <li class="nav-item">
+                            <a href="{% url 'geo_block_dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'geo_block_dashboard' %}active{% endif %}">
+                                <i class="me-2"></i> Geo Block Config
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="{% url 'blocked_ip_map' %}" class="nav-link {% if request.resolver_match.url_name == 'blocked_ip_map' %}active{% endif %}">
+                                <i class="me-2"></i> Geo Map
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="{% url 'ops_blocked_ip_dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'ops_blocked_ip_dashboard' %}active{% endif %}">
+                                <i class="me-2"></i> List Blocked IPs
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </li>
+
+            <li class="nav-item">
+                <a class="nav-link {% if request.resolver_match.url_name == 'service_dashboard' %}active{% endif %}" 
+                href="{% url 'ops_services:service_dashboard' %}">
+                    <i class="fas fa-server"></i>
+                    <span class="sidebar-text">Services</span>
+                </a>
+            </li>
+
+            <li class="nav-item">
+                <a class="nav-link {% if 'approval' in request.path %}active{% endif %}" href="/ops/approval/">
+                    <i class="fas fa-signature"></i>
+                    <span class="sidebar-text">Approvals</span>
+                </a>
+            </li>
+
+            {% comment %} <li class="nav-item mt-3">
+                <a class="nav-link" href="/admin/">
+                    <i class="fas fa-cog"></i>
+                    <span class="sidebar-text">Admin Panel</span>
+                </a>
+            </li> {% endcomment %}
+
+            <li class="nav-item mt-3">
+                <form id="logout-form" method="post" action="{% url 'logout' %}">
+                    {% csrf_token %}
+                    <a class="nav-link" href="#" id="logout-link">
+                        <i class="fas fa-sign-out-alt"></i>
+                        <span class="sidebar-text">Logout</span>
+                    </a>
+                </form>
+            </li>
+        </ul>
+    </div>
+    
+    <!-- Sidebar Footer -->
+    <div class="mt-auto p-3">
+        <div class="text-center">
+            <small class="text-white-50">
+                <span class="real-time-indicator"></span>
+                <span class="sidebar-monitoring">IP/API Protection </span>
+            </small>
+        </div>
+    </div>
+</nav>

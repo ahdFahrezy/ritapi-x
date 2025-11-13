@@ -1,0 +1,392 @@
+{% extends "base.html" %}
+
+{% block extra_css %}
+<style>
+.approval-card {
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    transition: box-shadow 0.3s ease;
+}
+
+.approval-card:hover {
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.status-badge {
+    font-size: 0.875rem;
+    padding: 0.375rem 0.75rem;
+    border-radius: 0.375rem;
+}
+
+.status-pending { background-color: #fff3cd; color: #856404; }
+.status-approved { background-color: #d1e7dd; color: #0f5132; }
+.status-rejected { background-color: #f8d7da; color: #721c24; }
+.status-expired { background-color: #e2e3e5; color: #41464b; }
+
+.change-summary {
+    font-weight: 600;
+    color: #495057;
+}
+
+.approval-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.audit-log {
+    max-height: 400px;
+    overflow-y: auto;
+    border: 1px solid #dee2e6;
+    border-radius: 0.375rem;
+    padding: 1rem;
+}
+
+.stats-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+    transition: box-shadow 0.3s ease;
+}
+
+.stats-card:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.stats-card i {
+    font-size: 2rem;
+    opacity: 0.75;
+}
+.stats-alerts {
+    background: linear-gradient(135deg, #f6d365 0%, #fda085 100%);
+    color: white;
+}
+
+.stats-blocked {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.stats-allowed {
+    background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+    color: white;
+}
+
+.stats-blocked-req {
+    background: linear-gradient(135deg, #f5576c 0%, #f093fb 100%);
+    color: white;
+}
+</style>
+{% endblock %}
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-lg rounded-3">
+                <div class="card-header bg-dark text-white">
+                    <h3 class="card-title mb-0">
+                        <i class="fas fa-tachometer-alt"></i>
+                        Security Dashboard
+                    </h3>
+                </div>
+                <div class="card-body">
+
+                    <!-- Statistik Cards -->
+                    <div class="row mb-4">
+                        <div class="col-md-3 col-6">
+                            <div class="stats-card stats-alerts d-flex align-items-center justify-content-between" style="height: 100px;">
+                                <div>
+                                    <h6 class="mb-0">Total Alerts</h6>
+                                    <h3 class="mb-0">{{ total_alerts|default:"0" }}</h3>
+                                </div>
+                                <i class="fas fa-exclamation-triangle fa-2x"></i>
+                            </div>
+                        </div>
+
+                        <div class="col-md-3 col-6">
+                            <div class="stats-card stats-blocked d-flex align-items-center justify-content-between" style="height: 100px;">
+                                <div>
+                                    <h6 class="mb-0">Blocked IPs</h6>
+                                    <h3 class="mb-0">{{ total_blocked|default:"0" }}</h3>
+                                </div>
+                                <i class="fas fa-shield-alt fa-2x"></i>
+                            </div>
+                        </div>
+
+                        <div class="col-md-3 col-6">
+                            <div class="stats-card stats-allowed d-flex align-items-center justify-content-between" style="height: 100px;">
+                                <div>
+                                    <h6 class="mb-0">Total Requests Allowed</h6>
+                                    <h3 class="mb-0">{{ total_requests_allow|default:"0" }}</h3>
+                                </div>
+                                <i class="fas fa-check fa-2x"></i>
+                            </div>
+                        </div>
+
+                        <div class="col-md-3 col-6">
+                            <div class="stats-card stats-blocked-req d-flex align-items-center justify-content-between" style="height: 100px;">
+                                <div>
+                                    <h6 class="mb-0">Total Requests Blocked</h6>
+                                    <h3 class="mb-0">{{ total_requests_block|default:"0" }}</h3>
+                                </div>
+                                <i class="fas fa-times fa-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+
+
+                    <!-- Charts -->
+                    {% comment %} <div class="card mt-4">
+                        <div class="card-header bg-dark text-white">
+                            <h5 class="mb-0">Request Trend (7 Hari Terakhir)</h5>
+                        </div>
+                        <div class="card-body bg-dark">
+                            <canvas id="requestTrendChart" style="max-height: 280px;"></canvas>
+                        </div>
+                    </div> {% endcomment %}
+
+                    <div class="card mb-4">
+                        <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0"><i class="fas fa-chart-line"></i> Request Trend (7 Hari Terakhir)</h5>
+                            <div class="d-flex align-items-center">
+                                <label for="filter-service" class="me-2 mb-0 text-white">Service:</label>
+                                <select id="filter-service" class="form-select form-select-sm" style="width: 220px;">
+                                    <option value="">All Services</option>
+                                    {% for s in services %}
+                                        <option value="{{ s.id }}">{{ s.host_name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="requestChart" height="100"></canvas>
+                        </div>
+                    </div>
+
+
+                    <!-- Charts -->
+                    {% comment %} <div class="row mb-4">
+                        <div class="col-md-6">
+                            <div class="card shadow-sm rounded-3">
+                                <div class="card-header bg-primary text-white fw-bold">
+                                    <i class="bi bi-graph-up me-2"></i>Alert Severity Distribution
+                                </div>
+                                <div class="card-body">
+                                    <canvas id="alertsChart" height="200"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card shadow-sm rounded-3">
+                                <div class="card-header bg-primary text-white fw-bold">
+                                    <i class="bi bi-bar-chart-fill me-2"></i>Blocked IPs (Last 7 Days)
+                                </div>
+                                <div class="card-body">
+                                    <canvas id="blockedChart" height="200"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div> {% endcomment %}
+
+                    {% comment %} <!-- Recent Alerts -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="card shadow-sm rounded-3">
+                                <div class="card-header bg-secondary text-white fw-bold">
+                                    <i class="bi bi-bell-fill me-2"></i>Recent Alerts
+                                </div>
+                                <div class="card-body p-0">
+                                    <div class="table-responsive">
+                                        <table class="table table-bordered table-striped mb-0">
+                                            <thead class="table-dark">
+                                                <tr>
+                                                    <th width="20%">Type</th>
+                                                    <th width="20%">IP</th>
+                                                    <th width="20%">Severity</th>
+                                                    <th width="40%">Time</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for a in recent_alerts %}
+                                                <tr>
+                                                    <td>{{ a.alert_type }}</td>
+                                                    <td>
+                                                        <code class="text-sm">{{ a.ip_address }}</code>
+                                                        <button class="btn btn-sm btn-outline-secondary ms-2" 
+                                                                onclick="copyToClipboard('{{ a.ip_address }}')" 
+                                                                title="Copy IP">
+                                                            <i class="fas fa-copy"></i>
+                                                        </button>
+                                                    </td>
+                                                    <td>
+                                                        {% if a.severity == "High" %}
+                                                            <span class="badge bg-danger">{{ a.severity }}</span>
+                                                        {% elif a.severity == "Medium" %}
+                                                            <span class="badge bg-warning text-dark">{{ a.severity }}</span>
+                                                        {% else %}
+                                                            <span class="badge bg-info text-white">{{ a.severity }}</span>
+                                                        {% endif %}
+                                                    </td>
+                                                    <td>{{ a.timestamp|date:"M d, Y H:i" }}</td>
+                                                </tr>
+                                                {% empty %}
+                                                <tr>
+                                                    <td colspan="4" class="text-center text-muted py-4">
+                                                        <i class="fas fa-inbox fa-3x mb-3"></i>
+                                                        <h5>No alerts found</h5>
+                                                        <p>System has not recorded any alerts yet.</p>
+                                                    </td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div> {% endcomment %}
+
+                    {% comment %} <!-- Recent Blocked IPs -->
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="card shadow-sm rounded-3">
+                                <div class="card-header bg-secondary text-white fw-bold">
+                                    <i class="bi bi-shield-lock-fill me-2"></i>Recent Blocked IPs
+                                </div>
+                                <div class="card-body p-0">
+                                    <div class="table-responsive">
+                                        <table class="table table-bordered table-striped mb-0">
+                                            <thead class="table-dark">
+                                                <tr>
+                                                    <th width="25%">IP</th>
+                                                    <th width="45%">Reason</th>
+                                                    <th width="30%">Status</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for b in recent_blocked %}
+                                                <tr>
+                                                    <td>
+                                                        <code class="text-sm">{{ b.ip_address }}</code>
+                                                        <button class="btn btn-sm btn-outline-secondary ms-2" 
+                                                                onclick="copyToClipboard('{{ b.ip_address }}')" 
+                                                                title="Copy IP">
+                                                            <i class="fas fa-copy"></i>
+                                                        </button>
+                                                    </td>
+                                                    <td>{{ b.reason|truncatechars:40 }}</td>
+                                                    <td>
+                                                        {% if b.active %}
+                                                            <span class="badge bg-danger">Active</span>
+                                                        {% else %}
+                                                            <span class="badge bg-secondary">Inactive</span>
+                                                        {% endif %}
+                                                    </td>
+                                                </tr>
+                                                {% empty %}
+                                                <tr>
+                                                    <td colspan="3" class="text-center text-muted py-4">
+                                                        <i class="fas fa-inbox fa-3x mb-3"></i>
+                                                        <h5>No blocked IPs</h5>
+                                                        <p>System has not blocked any IP yet.</p>
+                                                    </td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div> {% endcomment %}
+
+                </div> <!-- card-body -->
+            </div> <!-- card -->
+        </div>
+    </div>
+</div>
+{{ request_stats|json_script:"request-stats-data" }}
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script nonce="{{ request.csp_nonce }}">
+async function loadRequestChart() {
+    const serviceId = $('#filter-service').val(); // ambil service_id dari dropdown
+    const url = new URL("{% url 'requestlog_chart_data' %}", window.location.origin);
+
+    if (serviceId) url.searchParams.append("service_id", serviceId);
+
+    const response = await fetch(url);
+    const data = await response.json();
+
+    const ctx = document.getElementById('requestChart').getContext('2d');
+
+    // Hapus chart lama jika ada
+    if (window.requestChartInstance) {
+        window.requestChartInstance.destroy();
+    }
+
+    // Buat chart baru
+    window.requestChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: data.labels,
+            datasets: [
+                {
+                    label: 'Allow',
+                    data: data.allow_data,
+                    borderColor: 'rgba(40, 167, 69, 1)',
+                    backgroundColor: 'rgba(40, 167, 69, 0.2)',
+                    fill: true,
+                    tension: 0.3,
+                },
+                {
+                    label: 'Block',
+                    data: data.block_data,
+                    borderColor: 'rgba(220, 53, 69, 1)',
+                    backgroundColor: 'rgba(220, 53, 69, 0.2)',
+                    fill: true,
+                    tension: 0.3,
+                },
+            ]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    labels: {
+                        color: '#fff'
+                    }
+                },
+            },
+            scales: {
+                x: {
+                    ticks: { color: '#fff' },
+                    grid: { color: 'rgba(255,255,255,0.1)' }
+                },
+                y: {
+                    beginAtZero: true,
+                    ticks: { color: '#fff' },
+                    grid: { color: 'rgba(255,255,255,0.1)' }
+                }
+            }
+        }
+    });
+}
+
+$(document).ready(function() {
+    // Pertama kali load
+    loadRequestChart();
+
+    // Ganti chart saat filter berubah
+    $('#filter-service').on('change', loadRequestChart);
+
+    // Refresh otomatis tiap 30 detik
+    setInterval(loadRequestChart, 30000);
+});
+</script>
+{% endblock %}

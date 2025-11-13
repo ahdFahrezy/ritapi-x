@@ -1,0 +1,229 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block extra_css %}
+<style nonce="{{ request.csp_nonce }}">
+    /* Label "Show entries" */
+    .dataTables_length label {
+        color: #ffffff !important;
+    }
+
+    /* Label "Search" */
+    .dataTables_filter label {
+        color: #ffffff !important;
+    }
+
+    /* Info text "Showing 1 to 10 of ..." */
+    .dataTables_info {
+        color: #ffffff !important;
+    }
+
+</style>
+{% endblock %}
+{% block title %}Request Logs{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    {% comment %} <div class="card mb-4">
+        <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="fas fa-chart-line"></i> Request Trend (7 Hari Terakhir)</h5>
+        </div>
+        <div class="card-body">
+            <canvas id="requestChart" height="100"></canvas>
+        </div>
+    </div> {% endcomment %}
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h3 class="card-title">
+                        <i class="fas fa-list"></i> Request Logs
+                    </h3>
+                    <div class="card-tools">
+                        <a id="export-btn" href="{% url 'export_requestlog_excel' %}" class="btn btn-success">
+                            <i class="fas fa-file-excel"></i> Export
+                        </a>
+                    </div>
+                </div>
+
+                <div class="card-body rounded-4">
+                    <div class="d-flex mb-3">
+                        <input type="text" id="filter-ip" class="form-control me-2" placeholder="Search IP..." style="width: 200px;">
+                        <select id="filter-decision" class="form-select me-2" style="width: 150px;">
+                            <option value="">All Decisions</option>
+                            <option value="allow">Allow</option>
+                            <option value="block">Block</option>
+                        </select>
+                        <select id="filter-service" class="form-select me-2" style="width: 200px;">
+                            <option value="">All Services</option>
+                            {% for svc in services %}
+                            <option value="{{ svc.id }}">{{ svc.host_name }}</option>
+                            {% endfor %}
+                        </select>
+                        <button id="apply-filter" class="btn btn-primary">Apply</button>
+                    </div>
+                    <div class="table-responsive">
+                        <table id="requestlog-table" class="table table-bordered table-striped">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>No.</th>
+                                    <th>IP Address</th>
+                                    <th>Path</th>
+                                    <th>Method</th>
+                                    <th>Service</th> 
+                                    {% comment %} <th>Body Size</th> {% endcomment %}
+                                    <th>Score</th>
+                                    <th>Decision</th>
+                                    <th>Reason</th>
+                                    <th>Timestamp</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+{% endblock %}
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script nonce="{{ request.csp_nonce }}">
+async function loadRequestChart() {
+    const response = await fetch("{% url 'requestlog_chart_data' %}");
+    const data = await response.json();
+
+    const ctx = document.getElementById('requestChart').getContext('2d');
+
+    if (window.requestChartInstance) {
+        window.requestChartInstance.destroy();
+    }
+
+    window.requestChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: data.labels,
+            datasets: [
+                {
+                    label: 'Allow',
+                    data: data.allow_data,
+                    borderColor: 'rgba(40, 167, 69, 1)',
+                    backgroundColor: 'rgba(40, 167, 69, 0.2)',
+                    fill: true,
+                    tension: 0.3,
+                },
+                {
+                    label: 'Block',
+                    data: data.block_data,
+                    borderColor: 'rgba(220, 53, 69, 1)',
+                    backgroundColor: 'rgba(220, 53, 69, 0.2)',
+                    fill: true,
+                    tension: 0.3,
+                },
+            ]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    labels: {
+                        color: '#fff'
+                    }
+                },
+            },
+            scales: {
+                x: {
+                    ticks: { color: '#fff' },
+                    grid: { color: 'rgba(255,255,255,0.1)' }
+                },
+                y: {
+                    beginAtZero: true,
+                    ticks: { color: '#fff' },
+                    grid: { color: 'rgba(255,255,255,0.1)' }
+                }
+            }
+        }
+    });
+}
+
+$(document).ready(function() {
+    loadRequestChart();
+
+    // refresh chart setiap 30 detik
+    setInterval(loadRequestChart, 30000);
+});
+</script>
+
+<script nonce="{{ request.csp_nonce }}">
+$(document).ready(function() {
+    let table = $('#requestlog-table').DataTable({
+        ajax: {
+            url: "{% url 'requestlog_data' %}",
+            data: function(d) {
+                d.q = $('#filter-ip').val();
+                d.decision = $('#filter-decision').val();
+                d.service_id = $('#filter-service').val();
+            }
+        },
+        columns: [
+            { data: null, defaultContent: "" },      // Kolom No (auto)
+            { data: "ip_address" },                  // 1
+            { data: "path" },                        // 2
+            { data: "method" },                      // 3
+            { data: "service" },                     // 4
+            { data: "score" },                       // 5
+            {                                        // 6
+                data: "decision",
+                render: function(data) {
+                    return data === "block"
+                        ? '<span class="badge bg-danger">FAIL</span>'
+                        : '<span class="badge bg-success">SUCCESS</span>';
+                }
+            },
+            { data: "reason" },                      // 7
+            { data: "timestamp" }                    // 8
+        ],
+        order: [[8, "desc"]],
+        pageLength: 10,
+        responsive: true,
+        createdRow: function(row, data, dataIndex) {
+            const pageInfo = $('#requestlog-table').DataTable().page.info();
+            const index = pageInfo.start + dataIndex + 1;
+            $('td:eq(0)', row).html(index);
+        }
+    });
+
+    // Apply filter button
+    $('#apply-filter').on('click', function() {
+        table.ajax.reload();
+    });
+
+    // Auto refresh every 30s
+    setInterval(function() {
+        table.ajax.reload(null, false);
+    }, 30000);
+    $('#export-btn').on('click', function(e) {
+        e.preventDefault();
+
+        // Ambil nilai dari filter yang benar
+        const q = $('#filter-ip').val() || '';
+        const decision = $('#filter-decision').val() || '';
+        const service = $('#filter-service').val() || '';
+
+        const baseUrl = "{% url 'export_requestlog_excel' %}";
+        const params = new URLSearchParams();
+
+        if (q) params.append('q', q);
+        if (decision) params.append('decision', decision);
+        if (service) params.append('service_id', service);
+
+        const finalUrl = params.toString() ? `${baseUrl}?${params}` : baseUrl;
+        window.location.href = finalUrl;
+    });
+});
+</script>
+
+{% endblock %}

@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}ASN Checker{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-lg">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h3 class="card-title mb-0">
+                        <i class="fas fa-project-diagram"></i> ASN Checker
+                    </h3>
+                    <div class="card-tools">
+                        <form method="post" action="{% url 'ops_asn_checker' %}" class="d-inline">
+                            {% csrf_token %}
+                            <div class="input-group input-group-sm" style="width: 280px;">
+                                <input type="text" name="ip" class="form-control" placeholder="Enter IP e.g. 8.8.8.8" required>
+                                <button type="submit" class="btn btn-success">
+                                    <i class="fas fa-search"></i> Check
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="card-body">
+
+                    {% if error_message %}
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle"></i> {{ error_message }}
+                    </div>
+                    {% endif %}
+
+                    {% if result %}
+                    <div class="alert alert-info mb-4">
+                        <h5><i class="fas fa-info-circle"></i> ASN Lookup Result</h5>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <p><strong>IP Address:</strong> <code>{{ result.ip_address }}</code></p>
+                                <p><strong>ASN:</strong> {{ result.asn_number }}</p>
+                                <p><strong>Description:</strong> {{ result.asn_description|default:"-" }}</p>
+                            </div>
+                            <div class="col-md-6">
+                                <p><strong>Trust Score:</strong>
+                                    {% if result.trust_score < 0 %}
+                                        <span class="badge bg-danger">{{ result.trust_score }}</span>
+                                    {% elif result.trust_score > 0 %}
+                                        <span class="badge bg-success">{{ result.trust_score }}</span>
+                                    {% else %}
+                                        <span class="badge bg-warning">0</span>
+                                    {% endif %}
+                                </p>
+                                <p><strong>Checked At:</strong> {{ result.timestamp|date:"M d, Y H:i" }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- History Search -->
+                    <div class="d-flex justify-content-end">
+                        <form method="get" class="mb-3">
+                            <div class="input-group input-group-sm" style="width: 260px;">
+                                <input type="text" name="search" value="{{ search_query }}" class="form-control" placeholder="Search IP">
+                                <button type="submit" class="btn btn-outline-primary">
+                                    <i class="fas fa-search"></i>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- History Table -->
+                    <div class="table-responsive rounded-4">
+                        <table class="table table-bordered table-striped align-middle">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th class="text-center" style="width: 50px;">No</th>
+                                    <th>IP Address</th>
+                                    <th>ASN</th>
+                                    <th>Description</th>
+                                    <th>Trust Score</th>
+                                    <th>Checked At</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for a in history %}
+                                <tr>
+                                    <td class="text-center">{{ forloop.counter0|add:history.start_index }}</td>
+                                    <td><code>{{ a.ip_address }}</code></td>
+                                    <td>{{ a.asn_number }}</td>
+                                    <td>{{ a.asn_description|truncatechars:50 }}</td>
+                                    <td>
+                                        {% if a.trust_score < 0 %}
+                                            <span class="badge bg-danger">{{ a.trust_score }}</span>
+                                        {% elif a.trust_score > 0 %}
+                                            <span class="badge bg-success">{{ a.trust_score }}</span>
+                                        {% else %}
+                                            <span class="badge bg-warning">0</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ a.timestamp|date:"M d, Y H:i" }}</td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="6" class="text-center text-muted py-4">
+                                        <i class="fas fa-inbox fa-2x mb-3"></i>
+                                        <p>No ASN lookups yet</p>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Pagination -->
+                    {% if history and history.has_other_pages %}
+                    <nav class="mt-4">
+                        <ul class="pagination justify-content-center">
+                            {% if history.has_previous %}
+                                <li class="page-item"><a class="page-link" href="?page=1">&laquo;</a></li>
+                                <li class="page-item"><a class="page-link" href="?page={{ history.previous_page_number }}">Prev</a></li>
+                            {% endif %}
+                            {% for num in history.paginator.page_range %}
+                                {% if history.number == num %}
+                                    <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                                {% elif num > history.number|add:'-3' and num < history.number|add:'3' %}
+                                    <li class="page-item"><a class="page-link" href="?page={{ num }}">{{ num }}</a></li>
+                                {% endif %}
+                            {% endfor %}
+                            {% if history.has_next %}
+                                <li class="page-item"><a class="page-link" href="?page={{ history.next_page_number }}">Next</a></li>
+                                <li class="page-item"><a class="page-link" href="?page={{ history.paginator.num_pages }}">&raquo;</a></li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                    {% endif %}
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

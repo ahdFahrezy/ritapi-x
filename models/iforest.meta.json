@@ -1,0 +1,11 @@
+{
+  "trained_at": "2025-11-12T05:00:20.970222+00:00",
+  "num_samples": 634,
+  "features": [
+    "payload_size",
+    "response_time_ms",
+    "status_code"
+  ],
+  "checksum": "47c3e8a3e5b8673fb6e79ba0d3698990adee16241372e96d6e244dee7d3736fd",
+  "version": "v20251112050020"
+}

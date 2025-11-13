@@ -1,0 +1,117 @@
+anomalous
+curl -X POST http://127.0.0.1:8013/api/data \
+  -H "Content-Type: application/json" \
+  -H "X-Forwarded-For: 1.2.3.4" \
+  -H "X-Target-Id: c242a514-051a-4d5f-8241-a2b26d39e0e1" \
+  -H "X-Target-Ts: 1760508581" \
+  -H "X-Target-Sig: bdfc27208f6719301547b86ce4fea2a0307eb647091163701da534fc4f1fb355" \
+  -d '{"message": "'"$(python3 -c 'print("A"*13000)')"'","value":"test"}'
+
+malformed json
+curl -X POST http://127.0.0.1:8013/api/data \
+  -H "Content-Type: application/json" \
+  -H "X-Forwarded-For: 8.8.8.1" \
+  -H "X-Target-Id: c242a514-051a-4d5f-8241-a2b26d39e0e1" \
+  -H "X-Target-Ts: 1758768998" \
+  -H "X-Target-Sig: a19f46e836d40f290629814970f2d3bab7cfe9300c8e29f81008c74ee4aceef" \
+  -d "user= admin' OR '1'= '1'"
+
+Sukses
+curl -X POST http://127.0.0.1:8013/api/data \
+  -H "Content-Type: application/json" \
+  -H "X-Forwarded-For: 8.8.8.1" \
+  -H "X-Target-Id: c242a514-051a-4d5f-8241-a2b26d39e0e1" \
+  -H "X-Target-Ts: 1758768998" \
+  -H "X-Target-Sig: a19f46e836d40f290629814970f2d3bab7cfe9300c8e29f81008c74ee4aceef" \
+  -d '{"message": "hello", "value": "123"}'
+
+TOR
+curl -X POST http://127.0.0.1:8013/api/data \
+  -H "Content-Type: application/json" \
+  -H "X-Forwarded-For: 171.25.193.25" \
+  -H "X-Target-Id: c242a514-051a-4d5f-8241-a2b26d39e0e1" \
+  -H "X-Target-Ts: 1758768998" \
+  -H "X-Target-Sig: a19f46e836d40f290629814970f2d3bab7cfe9300c8e29f81008c74ee4aceef" \
+  -d '{"message": "hello", "value": 123}'
+
+internal deny
+curl -X POST http://127.0.0.1:8013/api/data \
+  -H "Content-Type: application/json" \
+  -H "X-Forwarded-For: 8.8.8.3" \
+  -H "X-Target-Id: c242a514-051a-4d5f-8241-a2b26d39e0e1" \
+  -H "X-Target-Ts: 1758768998" \
+  -H "X-Target-Sig: a19f46e836d40f290629814970f2d3bab7cfe9300c8e29f81008c74ee4aceef" \
+  -d '{"message": "hello", "value": 123}'
+
+emerging threats
+curl -X POST http://127.0.0.1:8013/api/data \
+  -H "Content-Type: application/json" \
+  -H "X-Forwarded-For: 103.156.68.130" \
+  -H "X-Target-Id: c242a514-051a-4d5f-8241-a2b26d39e0e1" \
+  -H "X-Target-Ts: 1758768998" \
+  -H "X-Target-Sig: a19f46e836d40f290629814970f2d3bab7cfe9300c8e29f81008c74ee4aceef" \
+  -d '{"message": "hello", "value": 123}'
+
+
+curl -X POST http://127.0.0.1:8013/api/data \
+  -H "Content-Type: application/json" \
+  -H "Origin: https://foo.com" \
+  -H "Host: api.situswaf.com" \
+  -H "X-Forwarded-For: 8.8.8.1" \
+  -H "X-Target-Id: c242a514-051a-4d5f-8241-a2b26d39e0e1" \
+  -H "X-Target-Ts: 1758768998" \
+  -H "X-Target-Sig: a19f46e836d40f290629814970f2d3bab7cfe9300c8e29f81008c74ee4aceef" \
+  -d '{"message": "hello", "value": 123}'
+
+
+curl -X POST http://127.0.0.1:8013/api/data \
+  -H "Content-Type: application/json" \
+  -H "Origin: https://foo.com" \
+  -H "Host: default.example.co3" \
+  -H "X-Forwarded-For: 8.8.8.1" \
+  -d '{"message": "hello", "value": 123}'
+
+  curl http://127.0.0.1:8013/api/health \
+    -H "Content-Type: application/json" \
+    -H "Origin: https://foo.com" \
+    -H "Host: default.example.com" \
+    -H "X-Forwarded-For: 8.8.8.1" \
+
+
+
+IP dari luar
+curl -X POST http://127.0.0.1:8013/api/data \
+  -H "Content-Type: application/json" \
+  -H "Host:default.example.co3" \
+  -H "X-Forwarded-For:80.156.86.78" \
+  -d '{"message": "hello", "value": "123"}'
+
+curl -X POST http://127.0.0.1:8013/api/data \
+  -H "Content-Type: application/json" \
+  -H "Host:default.example.co3" \
+  -H "X-Forwarded-For:175.100.47.144" \
+  -d '{"message": "hello", "value": "123"}'
+
+
+  45.64.124.10
+  119.82.251.5
+  110.74.192.34
+
+curl -X POST http://127.0.0.1:8013/api/data \
+  -H "Content-Type: application/json" \
+  -H "Host:default.example.co3" \
+  -H "X-Forwarded-For:110.74.192.34" \
+  -d '{"message": "hello", "value": "123"}'
+
+
+curl -X POST http://127.0.0.1:8013/api/data \
+  -H "Content-Type: application/json" \
+  -H "Host:default.example.co3" \
+  -H "X-Forwarded-For:8.8.8.3" \
+  -d '{"message": "hello", "value": "123"}'
+
+curl -X POST http://127.0.0.1/api/data \
+  -H "Content-Type: application/json" \
+  -H "Host: default.example.co3" \
+  -H "X-Forwarded-For: 4.8.4.4" \
+  -d '{"message":"hello","value":123}'

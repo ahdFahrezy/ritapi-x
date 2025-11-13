@@ -1,0 +1,814 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ page_title }}{% endblock %}
+{% block extra_css %}
+<style>
+.approval-card {
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    transition: box-shadow 0.3s ease;
+}
+
+.approval-card:hover {
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.status-badge {
+    font-size: 0.875rem;
+    padding: 0.375rem 0.75rem;
+    border-radius: 0.375rem;
+}
+
+.status-pending { background-color: #fff3cd; color: #856404; }
+.status-approved { background-color: #d1e7dd; color: #0f5132; }
+.status-rejected { background-color: #f8d7da; color: #721c24; }
+.status-expired { background-color: #e2e3e5; color: #41464b; }
+
+.change-summary {
+    font-weight: 600;
+    color: #495057;
+}
+
+.approval-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.audit-log {
+    max-height: 400px;
+    overflow-y: auto;
+    border: 1px solid #dee2e6;
+    border-radius: 0.375rem;
+    padding: 1rem;
+}
+
+.stats-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+    transition: box-shadow 0.3s ease;
+}
+
+.stats-card:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.stats-card i {
+    font-size: 2rem;
+    opacity: 0.75;
+}
+.stats-services {
+    background: linear-gradient(135deg, #ff7e5f 0%, #feb47b 100%);
+    color: white;
+}
+
+.stats-active-services {
+    background: linear-gradient(135deg, #43cea2 0%, #185a9d 100%);
+    color: white;
+}
+
+</style>
+{% endblock %}
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h3 class="card-title">
+                        <i class="fas fa-server mr-2"></i>
+                        Service Management Dashboard
+                    </h3>
+                    <div class="card-tools">
+                        <button type="button" class="btn btn-primary" id="addServiceBtn">
+                            <i class="fas fa-plus"></i> Add Service
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <!-- Statistics Cards -->
+                    <div class="row mb-4">
+                        <div class="col-md-6 col-12">
+                            <div class="stats-card stats-services d-flex align-items-center justify-content-between" style="height: 100px;">
+                                <div>
+                                    <h6 class="mb-0">Total Services</h6>
+                                    <h3 class="mb-0">{{ total_services|default:"0" }}</h3>
+                                </div>
+                                <i class="fas fa-cogs fa-2x"></i>
+                            </div>
+                        </div>
+                        <div class="col-md-6 col-12">
+                            <div class="stats-card stats-active-services d-flex align-items-center justify-content-between" style="height: 100px;">
+                                <div>
+                                    <h6 class="mb-0">Active Services</h6>
+                                    <h3 class="mb-0">{{ total_services|default:"0" }}</h3>
+                                </div>
+                                <i class="fas fa-toggle-on fa-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Search and Filter -->
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="searchInput" placeholder="Search services by URL...">
+                                <div class="input-group-append">
+                                                                        <button type="button" class="btn btn-outline-secondary" id="searchButton">
+                                        <i class="fas fa-search"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6 text-right">
+                            <span class="text-white">
+                                {% if page_obj %}
+                                    Showing {{ page_obj.start_index }}-{{ page_obj.end_index }} of {{ page_obj.paginator.count }} services
+                                {% else %}
+                                    Showing {{ services|length }} services
+                                {% endif %}
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Services Table -->
+                    <div class="table-responsive rounded-4">
+                        <table class="table table-bordered table-striped align-middle">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th style="width: 5%;">No</th>
+                                    <th style="width: 10%;">UUID</th>
+                                    <th style="width: 15%;">Host Name</th>
+                                    <th style="width: 25%;">Target Backend URL</th>
+                                    <th style="width: 10%;">Created</th>
+                                    <th style="width: 10%;">Status</th>
+                                    <th style="width: 15%;">Allowed Origins</th>
+                                    <th style="width: 15%;">Allowed Schemes</th>
+                                    <th style="width: 15%;">Routing Secret</th>
+                                    <th style="width: 15%;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for service in services %}
+                                <tr>
+                                    <td class="text-center">{{ forloop.counter0|add:services.start_index }}</td>
+                                    <td>
+                                        <code class="text-sm">{{ service.uuid|slice:":4" }}...</code>
+                                        <button class="btn btn-sm btn-outline-secondary ms-2 copy-btn" 
+                                                data-copy-text="{{ service.uuid }}" title="Copy UUID">
+                                            <i class="fas fa-copy"></i>
+                                        </button>
+                                    </td>
+
+                                    <!-- 🆕 Host Name -->
+                                    <td>
+                                        <span class="fw-semibold">{{ service.host_name }}</span>
+                                        <button class="btn btn-sm btn-outline-secondary ms-2 copy-btn" 
+                                                data-copy-text="{{ service.host_name }}" title="Copy Host Name">
+                                            <i class="fas fa-copy"></i>
+                                        </button>
+                                    </td>
+
+                                    <!-- Target URL -->
+                                    <td>
+                                        <a href="{{ service.target_base_url }}" target="_blank" class="text-primary">
+                                            {{ service.target_base_url }}
+                                        </a>
+                                        <button class="btn btn-sm btn-outline-secondary ms-2 copy-btn" 
+                                                data-copy-text="{{ service.target_base_url }}" title="Copy URL">
+                                            <i class="fas fa-copy"></i>
+                                        </button>
+                                    </td>
+
+                                    <!-- Created -->
+                                    <td>{{ service.timestamp|date:"M d, Y H:i" }}</td>
+
+                                    <!-- Status -->
+                                    <td>
+                                        <span class="badge bg-success">Active</span>
+                                    </td>
+
+                                    <!-- Allowed Origins -->
+                                    <td>{{ service.allowed_origins }}</td>
+                                    <td>{{ service.allowed_schemes }}</td>
+
+                                    <!-- Routing Secret -->
+                                    <td>
+                                        <code class="text-sm">{{ service.routing_secret|slice:":8" }}...</code>
+                                        <button class="btn btn-sm btn-outline-secondary ms-2 copy-btn" 
+                                                data-copy-text="{{ service.routing_secret }}" title="Copy Secret">
+                                            <i class="fas fa-copy"></i>
+                                        </button>
+                                    </td>
+
+                                    <!-- Actions -->
+                                    <td>
+                                        <div class="d-flex gap-2">
+                                            <button class="btn btn-sm btn-info edit-service-btn" 
+                                                    data-service-uuid="{{ service.uuid }}"
+                                                    data-service-hostname="{{ service.host_name }}"
+                                                    data-service-url="{{ service.target_base_url }}"
+                                                    data-service-allowed-origins="{{ service.allowed_origins }}"
+                                                    data-service-allowed-schemes="{{ service.allowed_schemes }}"
+                                                    title="Edit Service">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+
+                                            <button class="btn btn-sm btn-danger delete-service-btn" 
+                                                    data-service-uuid="{{ service.uuid }}"
+                                                    data-service-hostname="{{ service.host_name }}"
+                                                    data-service-url="{{ service.target_base_url }}"
+                                                    data-service-allowed-origins="{{ service.allowed_origins }}"
+                                                    title="Delete Service">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="9" class="text-center text-muted py-5">
+                                        <i class="fas fa-inbox fa-3x mb-3"></i>
+                                        <h5>No registered services yet</h5>
+                                        <p>Add a new service to start monitoring traffic.</p>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+
+
+
+                    <!-- Pagination -->
+                    {% if page_obj and page_obj.has_other_pages %}
+                    <nav aria-label="Service pagination" class="mt-4">
+                        <ul class="pagination justify-content-center">
+                            {% if page_obj.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page=1">&laquo; First</a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a>
+                                </li>
+                            {% else %}
+                                <li class="page-item disabled">
+                                    <span class="page-link">&laquo; First</span>
+                                </li>
+                                <li class="page-item disabled">
+                                    <span class="page-link">Previous</span>
+                                </li>
+                            {% endif %}
+
+                            {% for num in page_obj.paginator.page_range %}
+                                {% if page_obj.number == num %}
+                                    <li class="page-item active">
+                                        <span class="page-link">{{ num }}</span>
+                                    </li>
+                                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                                    </li>
+                                {% endif %}
+                            {% endfor %}
+
+                            {% if page_obj.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Last &raquo;</a>
+                                </li>
+                            {% else %}
+                                <li class="page-item disabled">
+                                    <span class="page-link">Next</span>
+                                </li>
+                                <li class="page-item disabled">
+                                    <span class="page-link">Last &raquo;</span>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Service Modal -->
+<div class="modal fade" id="addServiceModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add New Service</h5>
+                <button type="button" class="btn btn-danger" data-bs-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <form id="addServiceForm">
+                {% csrf_token %}
+                <div class="modal-body">
+
+                    <div class="form-group">
+                        <label for="hostName">Host Name</label>
+                        <input type="text" class="form-control" id="hostName" name="host_name"
+                            placeholder="app1.backend.com" required>
+                        <small class="form-text text-muted">
+                            The public hostname or domain that points to this WAF service.
+                        </small>
+                    </div>
+                    <div class="form-group mt-2">
+                        <label for="targetUrl">Target Backend URL</label>
+                        <input type="url" class="form-control" id="targetUrl" 
+                               placeholder="https://api.example.com" required>
+                        <small class="form-text text-muted">
+                            The base URL of the backend service that this WAF will route to.
+                        </small>
+                    </div>
+                    <div class="form-group mt-2">
+                        <label for="allowedOrigins">Allowed Origins</label>
+                        <input type="text" class="form-control" id="allowedOrigins" name="allowed_origins"
+                            placeholder="https://example.com, https://api.example.com">
+                        <small class="form-text text-muted">
+                            Comma-separated list of allowed origins for CORS.
+                        </small>
+                    </div>
+
+                    <div class="form-group mt-2">
+                        <label for="allowedSchemes">Allowed Schemes</label>
+                        <input type="text" class="form-control" id="allowedSchemes" name="allowed_schemes"
+                            placeholder="https, http">
+                        <small class="form-text text-muted">
+                            Comma-separated list of allowed schemes (e.g., https, http).
+                        </small>
+                    </div>
+
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create Service</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Service Modal -->
+<div class="modal fade" id="editServiceModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit Service</h5>
+                <button type="button" class="close" data-bs-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <form id="editServiceForm">
+                {% csrf_token %}
+                <input type="hidden" id="editServiceUuid">
+                    <div class="modal-body">
+                        <div class="form-group">
+                        <label for="editHostName">Host Name</label>
+                        <input type="text" class="form-control" id="editHostName" name="host_name"
+                            placeholder="app1.situswaf.com" required>
+                        <small class="form-text text-muted">
+                            The public hostname or domain that points to this WAF service.
+                        </small>
+                    </div>
+                        <div class="form-group mt-2">
+                        <label for="editTargetUrl">Target Backend URL</label>
+                        <input type="url" class="form-control" id="editTargetUrl" 
+                               placeholder="https://api.example.com" required>
+                    </div>
+                    <div class="form-group mt-2">
+                        <label for="editAllowedOrigins">Allowed Origins</label>
+                        <input type="text" class="form-control" id="editAllowedOrigins" name="allowed_origins"
+                            placeholder="https://example.com, https://api.example.com">
+                    </div>
+
+                    <div class="form-group mt-2">
+                        <label for="editAllowedSchemes">Allowed Schemes</label>
+                        <input type="text" class="form-control" id="editAllowedSchemes" name="allowed_schemes"
+                            placeholder="https, http">
+                    </div>
+
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Update Service</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteServiceModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirm Delete</h5>
+                <button type="button" class="close" data-bs-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <strong>Warning:</strong> This action cannot be undone!
+                </div>
+                <p>Are you sure you want to delete this service?</p>
+                <p><strong>Service UUID:</strong> <span id="deleteServiceUuid"></span></p>
+                <p><strong>Target URL:</strong> <span id="deleteServiceUrl"></span></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirmDelete">Delete Service</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script nonce="{{ request.csp_nonce }}">
+document.addEventListener('DOMContentLoaded', function() {
+    let currentServiceUuid = null;
+    const addServiceModal = new bootstrap.Modal(document.getElementById('addServiceModal'));
+    const editServiceModal = new bootstrap.Modal(document.getElementById('editServiceModal'));
+    const deleteServiceModal = new bootstrap.Modal(document.getElementById('deleteServiceModal'));
+
+    // Add Service Button Handlers
+    document.getElementById('addServiceBtn')?.addEventListener('click', function() {
+        document.getElementById('addServiceForm').reset();
+        addServiceModal.show();
+    });
+
+    document.querySelector('.add-first-service-btn')?.addEventListener('click', function() {
+        document.getElementById('addServiceForm').reset();
+        addServiceModal.show();
+    });
+
+    // Copy Buttons Handler
+    document.querySelectorAll('.copy-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const text = this.dataset.copyText;
+            copyToClipboard(text);
+        });
+    });
+
+    // Edit Buttons Handler
+    document.querySelectorAll('.edit-service-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const uuid = this.dataset.serviceUuid;
+            const url = this.dataset.serviceUrl;
+            const hostName = this.dataset.serviceHostname;
+            const allowedOrigins = this.dataset.serviceAllowedOrigins || ''; // ambil dari data-attribute
+            const allowedSchemes = this.dataset.serviceAllowedSchemes || '';
+            editService(uuid, hostName, url, allowedOrigins,allowedSchemes);
+        });
+    });
+
+    // Delete Buttons Handler
+    document.querySelectorAll('.delete-service-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const uuid = this.dataset.serviceUuid;
+            const url = this.dataset.serviceUrl;
+            deleteService(uuid, url);
+        });
+    });
+
+    // Search Input Handler
+    document.getElementById('searchInput').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            searchServices();
+        }
+    });
+
+    // Function Definitions
+    function copyToClipboard(text) {
+    navigator.clipboard.writeText(text).then(function() {
+        Swal.fire({
+            icon: 'success',
+            title: 'Copied!',
+            text: 'Text copied to clipboard',
+            toast: true,
+            position: 'top-end',
+            showConfirmButton: false,
+            timer: 3000
+        });
+    }, function(err) {
+        console.error('Could not copy text: ', err);
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: 'Failed to copy text',
+            toast: true,
+            position: 'top-end',
+            showConfirmButton: false,
+            timer: 3000
+        });
+    });
+}
+
+// First add this helper function at the top of your script
+function getCSRFToken() {
+    return "{{ csrf_token }}";
+}
+
+// Handle form validation errors
+function showFormErrors(form, errors) {
+    form.querySelectorAll('.is-invalid').forEach(el => el.classList.remove('is-invalid'));
+    form.querySelectorAll('.invalid-feedback').forEach(el => el.remove());
+    
+    for (const [field, message] of Object.entries(errors)) {
+        const input = form.querySelector(`[name="${field}"]`);
+        if (input) {
+            input.classList.add('is-invalid');
+            const feedback = document.createElement('div');
+            feedback.className = 'invalid-feedback';
+            feedback.textContent = message;
+            input.parentNode.appendChild(feedback);
+        }
+    }
+}
+
+// Search services
+function searchServices() {
+    const searchTerm = document.getElementById('searchInput').value;
+    if (searchTerm.trim()) {
+        window.location.href = `?search=${encodeURIComponent(searchTerm)}`;
+    }
+}
+
+// Add Service Form Handler
+document.getElementById('addServiceForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const targetUrl = document.getElementById('targetUrl').value;
+    const hostName = document.getElementById('hostName').value;
+    const allowedOrigins = document.getElementById('allowedOrigins').value;
+    
+    // Show loading state
+    const submitBtn = this.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating...';
+    submitBtn.disabled = true;
+    fetch('/ops/api/services/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCSRFToken(),
+        },
+        body: JSON.stringify({
+            target_base_url: targetUrl,
+            host_name: hostName,
+            allowed_origins: allowedOrigins,
+            allowed_schemes: document.getElementById('allowedSchemes').value
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            Swal.fire({
+                icon: 'success',
+                title: 'Success',
+                text: 'Service created successfully!'
+            }).then(() => {
+                location.reload();
+            });
+            addServiceModal.hide();
+        }else if (data.status === 'pending_approval') {
+            // ✅ Khusus untuk status "pending_approval"
+            Swal.fire({
+                icon: 'info',
+                title: 'Pending Approval',
+                html: `
+                    <p>${data.message}</p>
+                    <hr>
+                    <p><strong>Request ID:</strong> ${data.pending_change_id}</p>
+                    <p><strong>Expires at:</strong> ${new Date(data.expires_at).toLocaleString()}</p>
+                `,
+                confirmButtonText: 'OK'
+            }).then(() => {
+                location.reload();
+            });
+            addServiceModal.hide();
+        } 
+        else {
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: data.message || 'Failed to create service'
+            });
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: error.message || 'Failed to create service'
+        });
+    })
+    .finally(() => {
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+    });
+});
+
+
+
+// Edit Service
+function editService(uuid, hostName, targetUrl, allowedOrigins = '', allowedSchemes = '') {
+    currentServiceUuid = uuid;
+    const editForm = document.getElementById('editServiceForm');
+    console.log("allowedSchemes:", allowedSchemes);
+    // Set the values
+    document.getElementById('editServiceUuid').value = uuid;
+    document.getElementById('editTargetUrl').value = targetUrl;
+    document.getElementById('editHostName').value = hostName || '';
+    document.getElementById('editAllowedOrigins').value = allowedOrigins; // <-- pastikan ini di-set
+    document.getElementById('editAllowedSchemes').value = allowedSchemes || '';
+    // Show the modal after setting values
+    editServiceModal.show();
+}
+
+// Edit Service Form Handler
+document.getElementById('editServiceForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const hostName = document.getElementById('editHostName').value;
+    const targetUrl = document.getElementById('editTargetUrl').value;
+    const allowedOrigins = document.getElementById('editAllowedOrigins').value;
+    const allowedSchemes = document.getElementById('editAllowedSchemes').value;
+    
+    // Show loading state
+    const submitBtn = this.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Updating...';
+    submitBtn.disabled = true;
+    fetch(`/ops/api/services/${currentServiceUuid}/`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCSRFToken()
+        },
+        body: JSON.stringify({
+            host_name: hostName,
+            target_base_url: targetUrl,
+            allowed_origins: allowedOrigins,
+            allowed_schemes: allowedSchemes
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            Swal.fire({
+                icon: 'success',
+                title: 'Success',
+                text: 'Service updated successfully!'
+            }).then(() => {
+                location.reload();
+            });
+            editServiceModal.hide();
+        }else if (data.status === 'pending_approval') {
+            // ✅ Tambahan khusus untuk pending approval
+            Swal.fire({
+                icon: 'info',
+                title: 'Pending Approval',
+                html: `
+                    <p>${data.message}</p>
+                    <hr>
+                    <p><strong>Request ID:</strong> ${data.pending_change_id}</p>
+                    <p><strong>Expires at:</strong> ${new Date(data.expires_at).toLocaleString()}</p>
+                `,
+                confirmButtonText: 'OK'
+            }).then(() => {
+                location.reload();
+            });
+            editServiceModal.hide();
+        } 
+         else {
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: data.message || 'Failed to update service'
+            });
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: error.message || 'Failed to update service'
+        });
+    })
+    .finally(() => {
+        // Reset button state
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+    });
+});
+
+// Delete Service
+function deleteService(uuid, targetUrl) {
+    Swal.fire({
+        title: 'Are you sure?',
+        text: `Do you want to delete the service with URL: ${targetUrl}?`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, delete it',
+        cancelButtonText: 'Cancel'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            fetch(`/ops/api/services/${uuid}/`, {
+                method: 'DELETE',
+                headers: {
+                    'X-CSRFToken': getCSRFToken()
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Deleted!',
+                        text: 'Service has been deleted successfully'
+                    }).then(() => {
+                        location.reload();
+                    });
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: data.message || 'Failed to delete service'
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: error.message || 'Failed to delete service'
+                });
+            });
+        }
+    });
+}
+
+// Get CSRF token from cookies
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// Modal event handlers
+    // Add Service Modal
+    document.getElementById('addServiceModal').addEventListener('hidden.bs.modal', function() {
+        const form = document.getElementById('addServiceForm');
+        form.reset();
+        form.querySelector('.alert')?.remove();
+        form.querySelectorAll('.is-invalid').forEach(el => el.classList.remove('is-invalid'));
+    });
+    
+    // Edit Service Modal
+    document.getElementById('editServiceModal').addEventListener('hidden.bs.modal', function() {
+        const form = document.getElementById('editServiceForm');
+        form.reset();
+        form.querySelector('.alert')?.remove();
+        form.querySelectorAll('.is-invalid').forEach(el => el.classList.remove('is-invalid'));
+        currentServiceUuid = null;
+    });
+    
+    // Delete Service Modal
+    document.getElementById('deleteServiceModal').addEventListener('hidden.bs.modal', function() {
+        currentServiceUuid = null;
+    });
+
+    // Initialize search button handler
+    document.getElementById('searchButton').addEventListener('click', function() {
+        searchServices();
+    });
+}); // Close DOMContentLoaded event listener
+</script>
+{% endblock %}
